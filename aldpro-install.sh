@@ -6,6 +6,7 @@ lastcheck3=0
 lastcheck4=0
 lastcheck5=0
 lastcheck6=0
+lastcheck7=0
 
 echo -e '\n---Security level check'
 
@@ -59,7 +60,7 @@ echo -e "deb http://download.astralinux.ru/astra/frozen/1.7_x86-64/1.7.1/reposit
 apt update
 
 echo Installing ALD Pro repos
-echo -e "deb https://download.astralinux.ru/aldpro/stable/repository-main/1.0.0 main" | sudo tee /etc/apt/sources.list.d/aldpro.list
+echo -e "deb https://download.astralinux.ru/aldpro/stable/repository-main/ 1.1.2 main" | sudo tee /etc/apt/sources.list.d/aldpro.list
 echo -e "deb https://download.astralinux.ru/aldpro/stable/repositoryextended/ generic main" | sudo tee -a /etc/apt/sources.list.d/aldpro.list
 
 echo -e "Package: *\nPin: release n=generic\nPin-Priority: 900" > /etc/apt/preferences.d/aldpro
@@ -77,6 +78,7 @@ case "$upgrvar" in
  "y" )
  apt install -y astra-update
  apt update && astra-update -A -r -n
+ lastcheck6=1
  ;;
 
  "n" )
@@ -102,8 +104,53 @@ echo 'Какой dns?'
 read dns
 echo 'Какой поисковый домен?'
 read dom
-echo -e "auto $iface\niface $iface inet static\naddress $addr\nnetmask $mask\ngateway $defgw\ndns-nameservers $dns\ndns-search $dom" >> /etc/network/interfaces
+echo -e "\n\nauto $iface\niface $iface inet static\naddress $addr\nnetmask $mask\ngateway $defgw\ndns-nameservers $dns\ndns-search $dom" >> /etc/network/interfaces
 
 echo -e '\n---Turning off NetManager'
 sudo systemctl stop network-manager
 sudo systemctl disable network-manager
+lastcheck7=1
+
+echo "nameserver $addr" > /etc/resolv.conf
+echo "search $dom" >> /etc/resolv.conf
+echo -e "\n\n"
+cat /etc/resolv.conf
+echo -e "\n\n"
+
+echo Global check:
+if [ $lastcheck1 = 1 ] then echo 1. Security level ok! else Security level ERROR! fi 
+if [ $lastcheck1 = 2 ] then echo 2. FQDN ok! else FQDN ERROR! fi
+if [ $lastcheck1 = 3 ] then echo 3. hosts fix ok! else hosts fix ERROR! fi
+if [ $lastcheck1 = 4 ] then echo 4. Repos ok! else Repos ERROR! fi
+if [ $lastcheck1 = 5 ] then echo 5. ALD Pro repos ok! else ALD Pro repos ERROR! fi
+if [ $lastcheck1 = 6 ] then echo 6. Astra version ok! else Astra version ERROR! fi
+if [ $lastcheck1 = 7 ] then echo 7. Network and resolv ok! else Network ERROR! fi
+
+echo Start installing ald pro?(y/n)
+read installgo
+if [ $installgo = "y"]
+then 
+	sudo DEBIAN_FRONTEND=noninteractive apt-get install -q -y aldpro-mp
+	echo Enter hostname (dc for dc.domain.test)
+	read domain
+	echo Enter password
+	read aldpass
+	echo 'Enter static ip for domain'
+	echo -e 'Domain: $dom\nDomains hostname: $domain\nDomain static addr: $addr'
+	echo 'Ready to install? ( y / n )'
+	read okinstallald
+	case "$upgrvar" in
+
+		"y" )
+		sudo /opt/rbta/aldpro/mp/bin/aldpro-server-install.sh -d $dom -n $domain -p $aldpass --ip $addr --no-reboot
+		;;
+
+		"n" )
+		echo Skipping install
+		;;
+
+		* )
+		exit 1
+		;;
+	esac
+	
