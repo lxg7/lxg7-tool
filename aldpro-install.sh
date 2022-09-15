@@ -74,7 +74,7 @@ echo -e "deb http://download.astralinux.ru/astra/frozen/1.7_x86-64/1.7.1/reposit
 apt update
 
 echo Installing ALD Pro repos
-echo -e "deb https://download.astralinux.ru/aldpro/stable/repository-main/ 1.1.2 main" | sudo tee /etc/apt/sources.list.d/aldpro.list
+echo -e "deb https://download.astralinux.ru/aldpro/stable/repository-main/ 1.0.0 main" | sudo tee /etc/apt/sources.list.d/aldpro.list
 echo -e "deb https://download.astralinux.ru/aldpro/stable/repository-extended/ generic main" | sudo tee -a /etc/apt/sources.list.d/aldpro.list
 
 echo -e "Package: *\nPin: release n=generic\nPin-Priority: 900" > /etc/apt/preferences.d/aldpro
