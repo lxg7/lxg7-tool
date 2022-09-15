@@ -25,8 +25,8 @@ echo -e '\n---FQDN check'
 
 echo Enter FQDN hostname:
 read fqdnhostname
-hostnamectl set-hostname $fqdnhostname
-fqdncheck=`tr -dc '.' <<<"$fqdnhostname" | awk '{ print length; }'`
+hostnamectl set-hostname "$fqdnhostname"
+fqdncheck=$(tr -dc '.' <<<"$fqdnhostname" | awk '{ print length; }')
 
 if [ "$fqdncheck" -eq 2 ]
 then
@@ -45,12 +45,26 @@ echo Open hosts file?
 read ok
 nano /etc/hosts
 
-ping -c 1 $fqdnhostname > /dev/null && echo "hosts is ok" && lastcheck3=1 || echo "hosts is incorrect" && exit 1
-
-read aaa
+if ping -c 1 "$fqdnhostname" &> /dev/null
+then
+	echo "hosts is ok"
+	lastcheck3=1
+else
+	echo "hosts is incorrect"
+	echo 0
+fi
 
 echo -e '\n---Internet repos check'
-ping -c 3 download.astralinux.ru > /dev/null && echo "repo is ok" && lastcheck4=1 || echo "repo is unreachable" && exit 1
+# ping -c 3 download.astralinux.ru > /dev/null && echo "repo is ok" && lastcheck4=1 || echo "repo is unreachable" && exit 1
+if ping -c 3 download.astralinux.ru &> /dev/null
+then
+	echo "repo is ok"
+	lastcheck4=1
+else
+	cho "repo is unreachable"
+	echo 0
+fi
+
 
 echo -e '\n---sources.list fix'
 mv /etc/apt/sources.list /etc/apt/sources.list.BAK
@@ -61,13 +75,13 @@ apt update
 
 echo Installing ALD Pro repos
 echo -e "deb https://download.astralinux.ru/aldpro/stable/repository-main/ 1.1.2 main" | sudo tee /etc/apt/sources.list.d/aldpro.list
-echo -e "deb https://download.astralinux.ru/aldpro/stable/repositoryextended/ generic main" | sudo tee -a /etc/apt/sources.list.d/aldpro.list
+echo -e "deb https://download.astralinux.ru/aldpro/stable/repository-extended/ generic main" | sudo tee -a /etc/apt/sources.list.d/aldpro.list
 
 echo -e "Package: *\nPin: release n=generic\nPin-Priority: 900" > /etc/apt/preferences.d/aldpro
 lastcheck5=1
 
 echo -e '\n---Astra-version check'
-echo "Current: `cat /etc/astra_version`"
+echo "Current: $(cat /etc/astra_version)"
 echo Version should match 1.7.1 or later
 
 echo 'Perform upgrade?(y / n)'
@@ -117,40 +131,33 @@ echo -e "\n\n"
 cat /etc/resolv.conf
 echo -e "\n\n"
 
-echo Global check:
-if [ $lastcheck1 = 1 ] then echo 1. Security level ok! else Security level ERROR! fi 
-if [ $lastcheck1 = 2 ] then echo 2. FQDN ok! else FQDN ERROR! fi
-if [ $lastcheck1 = 3 ] then echo 3. hosts fix ok! else hosts fix ERROR! fi
-if [ $lastcheck1 = 4 ] then echo 4. Repos ok! else Repos ERROR! fi
-if [ $lastcheck1 = 5 ] then echo 5. ALD Pro repos ok! else ALD Pro repos ERROR! fi
-if [ $lastcheck1 = 6 ] then echo 6. Astra version ok! else Astra version ERROR! fi
-if [ $lastcheck1 = 7 ] then echo 7. Network and resolv ok! else Network ERROR! fi
+echo "Global check:"
+if [ $lastcheck1 -eq 1 ]; then echo "1. Security level ok!"; else echo "Security level ERROR!"; fi 
+echo 
+if [ $lastcheck2 -eq 1 ]; then echo "2. FQDN ok!"; else echo "FQDN ERROR!"; fi
+echo 
+if [ $lastcheck3 -eq 1 ]; then echo "3. hosts fix ok!"; else echo "hosts fix ERROR!"; fi
+echo 
+if [ $lastcheck4 -eq 1 ]; then echo "4. Repos ok!"; else echo "Repos ERROR!"; fi
+echo 
+if [ $lastcheck5 -eq 1 ]; then echo "5. ALD Pro repos ok!"; else echo "ALD Pro repos ERROR!"; fi
+echo 
+if [ $lastcheck6 -eq 1 ]; then echo "6. Astra version ok!"; else echo "Astra version ERROR!"; fi
+echo 
+if [ $lastcheck7 -eq 1 ]; then echo "7. Network and resolv ok!"; else echo "Network ERROR!"; fi
 
-echo Start installing ald pro?(y/n)
+echo "Start installing ald pro?(y / n)" 
 read installgo
-if [ $installgo = "y"]
+if [ "$installgo" = "y" ]
 then 
+	sudo systemctl start network-manager
 	sudo DEBIAN_FRONTEND=noninteractive apt-get install -q -y aldpro-mp
-	echo Enter hostname (dc for dc.domain.test)
+	echo "Enter hostname (dc for dc.domain.test)"
 	read domain
 	echo Enter password
 	read aldpass
 	echo 'Enter static ip for domain'
-	echo -e 'Domain: $dom\nDomains hostname: $domain\nDomain static addr: $addr'
-	echo 'Ready to install? ( y / n )'
-	read okinstallald
-	case "$upgrvar" in
-
-		"y" )
-		sudo /opt/rbta/aldpro/mp/bin/aldpro-server-install.sh -d $dom -n $domain -p $aldpass --ip $addr --no-reboot
-		;;
-
-		"n" )
-		echo Skipping install
-		;;
-
-		* )
-		exit 1
-		;;
-	esac
+	echo -e "Domain: $dom\nDomains hostname: $domain\nDomain static addr: $addr"
+	sudo /opt/rbta/aldpro/mp/bin/aldpro-server-install.sh -d "$dom" -n "$domain" -p "$aldpass" --ip "$addr" --no-reboot
 fi
+echo finished installing
