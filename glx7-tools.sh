@@ -1,41 +1,52 @@
 #!/bin/bash
 function hostnamechanger {
     oldhn=$(hostname)
-        sleep 1
-        echo "Changing hostname..." 
-        echo -e -n "Nedd FWDN hostname?(y/n)"
-        read var
-        case "$var" in
-            "y")  
-                echo -n Enter FQDN hostname:
-                read fqdnhostname
-                fqdncheck=$(tr -dc '.' <<<"$fqdnhostname" | awk '{ print length; }')
+    sleep 1
+    echo "Changing hostname..." 
+    read -p "Nedd FWDN hostname?(y/n)" var
+    case "$var" in
+        "y")  
+            read -p "Enter FQDN hostname:" fqdnhostname
+            fqdncheck=$(tr -dc '.' <<<"$fqdnhostname" | awk '{ print length; }')
 
-                if [ "$fqdncheck" -eq 2 ]
-                then
-                    echo fqdn ok
-                    hostnamectl set-hostname "$fqdnhostname"
-                    echo -n OK, hostname changed: 
-                    hostname
-                else   
-                    echo fqdn error, hostname not changed
-                fi
-            ;;
-            "n")  
-                echo Enter new hostname:
-                read newhostname
-                hostnamectl set-hostname "$newhostname"
+            if [ "$fqdncheck" -eq 2 ]
+            then
+                echo fqdn ok
+                hostnamectl set-hostname "$fqdnhostname"
                 echo -n OK, hostname changed: 
                 hostname
-            ;;
-            * )  echo "invalid option"     ;;
-            esac
-            sleep 1
+                fixhosts "$oldhn"
+            else   
+                echo fqdn error, hostname not changed
+            fi
+        ;;
+        "n")
+            read -p "Enter new hostname:" newhostname
+            hostnamectl set-hostname "$newhostname"
+            echo -n OK, hostname changed: 
+            hostname
+            fixhosts "$oldhn"
+        ;;
+        * )  echo "invalid option"     ;;
+    esac
 } # меняет hostname на обычный либо fqdn (с проверкой) 
 # добавить fix /etc/hosts
 
-function fixhosts (oldhn){
-
+function fixhosts () {
+    oldhn=$1
+    echo "$oldhn"
+    newhn=$(hostname)
+    echo "$newhn"
+    fqdncheck=$(tr -dc '.' <<<"$newhn" | awk '{ print length; }')
+    if [ "$fqdncheck" -eq 2 ]
+            then
+                
+                sed -i "s/$oldhn/$newhn/gi" /etc/hosts
+            else   
+                sed -i "s/$oldhn/$newhn/gi" /etc/hosts
+            fi
+    
+    echo hosts fixed
 }
 
 
@@ -74,7 +85,7 @@ EOF
     "q")  echo "case sensitive!!"   ;; 
      * )  echo "invalid option"     ;;
     esac
-    sleep 5
+    sleep 3
 done
 
 
